@@ -34,6 +34,17 @@ func _init(initial_value: Variant) -> void:
 	_value = initial_value
 
 
+func _set(property: StringName, value: Variant) -> bool:
+	if not property.begins_with("_"):
+		match property:
+			"value":
+				set("_value", value)
+				return true
+
+
+	return false
+
+
 func _get(property: StringName) -> Variant:
 	if property == "value":
 		return _value
