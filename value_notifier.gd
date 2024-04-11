@@ -22,7 +22,7 @@ var _value: Variant:
 
 
 		# Notifica os observadores.
-		handle_notifier_listeners(_listeners, new_value, old_value)
+		notify(new_value, old_value)
 
 	get: return _value
 
@@ -59,11 +59,17 @@ func _get(property: StringName) -> Variant:
 	return null
 
 
-func add_listener(fnc: Callable) -> void:
+func subscribe(fnc: Callable, init: bool = false) -> void:
 	_listeners.append(fnc)
 
+	if not init:
+		return
 
-func remove_listener(fnc: Callable) -> bool:
+
+	fnc.bind(_value, _value).call()
+
+
+func unsubscribe(fnc: Callable) -> bool:
 	var has_removed := false
 
 	for i in range(_listeners.size() -1, -1, -1):
@@ -80,19 +86,8 @@ func remove_listener(fnc: Callable) -> bool:
 	return has_removed
 
 
-func handle_notifier_listeners(listeners: Array, new_value: Variant, old_value: Variant) -> void:
-	if not _listeners.size():
-		return
-
-	if not new_value:
-		return
-
-
-	_notifier_listeners(listeners, new_value, old_value)
-
-
-func _notifier_listeners(listeners: Array, new_value: Variant, old_value: Variant) -> void:
-	for listener in listeners:
+func notify(new_value: Variant, old_value: Variant) -> void:
+	for listener in _listeners:
 		listener.bind(new_value, old_value).call()
 
 
