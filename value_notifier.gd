@@ -1,95 +1,98 @@
 class_name ValueNotifier extends Object
 
-
 var _value: Variant:
+	get: return _value;
+	
 	set(new_value):
-		var old_value = _value
-
-		# Impede que o novo valor seja computado caso o tipo nao seja correspondente ao valor anterior.
-		if not typeof(new_value) == typeof(old_value):
-			# Permite a inicialização do valor.
-			if typeof(old_value) == TYPE_NIL:
-				_value = new_value
-				return
-
-
-			# TODO: Substituir a função printerr por assert.
-			printerr("Oppss, o valor precisa ser: %s mas retornou: %s" % [ typeof(old_value), typeof(new_value) ])
-			return
-
-
-		_value = new_value
-
-
+		# Define temporariamente o valor atual.
+		# Necessário para o retorno do estado.
+		var old_value = _value;
+		
+		# Impede que valores nulos sejam inicializados.
+		# Use o método dispose para destruir o objeto.
+		if(typeof(new_value) == TYPE_NIL):
+			return;
+		
+		# Define o novo valor.
+		_value = new_value;
+		
 		# Notifica os observadores.
-		notify(new_value, old_value)
+		notify(new_value, old_value);
+		
 
-	get: return _value
+var _listeners: Array;
 
 
-var _listeners: Array
+func _set(property: StringName, value: Variant) -> bool:
+	match property:
+		"value", "_value":
+			_value = value
+			
+			return true
+	
+	return false;
 
+func _get(property: StringName) -> Variant:
+	match property:
+		"_value", "value":
+			if("_value" in _value):
+				return _value._value
+			
+			if("value" in _value):
+				return _value.value
+			
+			return _value
+			
+		"_listeners", "listeners":
+			return _listeners
+	
+	return null
 
 func _init(initial_value: Variant) -> void:
 	_value = initial_value
 
-
-func _set(property: StringName, value: Variant) -> bool:
-	if not property.begins_with("_"):
-		match property:
-			"value":
-				set("_value", value)
-				return true
-
-
-	return false
-
-
-func _get(property: StringName) -> Variant:
-	if property == "value":
-		return _value
-
-	elif property == "listeners":
-		return _listeners
-
-	elif property in self:
-		return get(property)
-
-
-	return null
-
-
-func subscribe(fnc: Callable, init: bool = false) -> void:
+func subscribe(fnc: Callable, init: bool = false):
 	_listeners.append(fnc)
+	
+	if init:
+		fnc.bind(_value, _value).call()
+		
 
-	if not init:
-		return
+	return {
+		"subscribe": func():
+			subscribe(fnc),
+			
+		"unsubscribe": func():
+			unsubscribe(fnc),
+	}
 
-
-	fnc.bind(_value, _value).call()
-
-
-func unsubscribe(fnc: Callable) -> bool:
-	var has_removed := false
-
-	for i in range(_listeners.size() -1, -1, -1):
-		if not _listeners[i] == fnc:
+func unsubscribe(fnc: Callable):
+	for i in range(_listeners.size()):
+		if(not _listeners[i] == fnc):
 			continue
-
-
+		
 		_listeners.remove_at(i)
-		has_removed = true
+		
+		return true
 
-		break
-
-
-	return has_removed
-
-
-func notify(new_value: Variant, old_value: Variant) -> void:
+func notify(new_value: Variant, old_value: Variant):
 	for listener in _listeners:
+		if not listener is Callable:
+			continue
+		
 		listener.bind(new_value, old_value).call()
 
+func has_listener(fnc: Callable) -> bool:
+	var response := false
+	
+	for listener in _listeners:
+		if not listener == fnc:
+			continue
+			
+		response = true
+		break
+	
+	return response
 
 func dispose() -> void:
 	for property in get_property_list():
